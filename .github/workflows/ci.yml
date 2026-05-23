@@ -1,0 +1,30 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: analytics_test
+          POSTGRES_USER: analytics
+          POSTGRES_PASSWORD: secret
+        ports: ['5432:5432']
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_pgsql, redis
+
+      - run: composer install --no-interaction
+      - run: cp .env.example .env.testing && php artisan key:generate --env=testing
+      - run: php artisan migrate --env=testing
+      - run: php artisan test
